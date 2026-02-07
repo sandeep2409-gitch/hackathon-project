@@ -4,11 +4,16 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 import sys
 
-sys.path.append('../backend')
+import os
+
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+_backend = os.path.join(_script_dir, '..', 'backend')
+sys.path.insert(0, os.path.abspath(_backend))
 from features import extract_features
 
 def train_with_multi_labels(csv_path):
-  
+    if not os.path.isabs(csv_path):
+        csv_path = os.path.join(_script_dir, csv_path)
     df = pd.read_csv(csv_path) 
     map_dict = {
         'benign': 0,
@@ -30,7 +35,8 @@ def train_with_multi_labels(csv_path):
     model.fit(X_train, y_train)
     
     
-    joblib.dump(model, '../backend/phish_model.pkl')
+    model_path = os.path.join(_script_dir, '..', 'backend', 'phish_model.pkl')
+    joblib.dump(model, model_path)
     print(f"Model trained! Accuracy: {model.score(X_test, y_test)*100:.2f}%")
 
 if __name__ == "__main__":
