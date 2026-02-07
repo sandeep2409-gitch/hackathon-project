@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KS | Unified Security Command</title>
+    <style>
+        :root {
+            --mac-blue: #007AFF;
+            --mac-red: #FF3B30;
+            --mac-green: #34C759;
+            --mac-yellow: #FFCC00;
+            --panel-bg: rgba(255, 255, 255, 0.85);
+            --text-main: #1d1d1f;
+            --accent: var(--mac-blue);
+        }
+
+        [data-theme="dark"] {
+            --panel-bg: rgba(28, 28, 30, 0.9);
+            --text-main: #f5f5f7;
+            --mac-blue: #0A84FF;
+        }
+
+        body {
+            margin: 0; background: #ececec;
+            font-family: -apple-system, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; overflow: hidden;
+            transition: background 0.5s;
+        }
+
+        /* --- Main Window --- */
+        .window {
+            width: 950px; height: 600px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(50px); -webkit-backdrop-filter: blur(50px);
+            border-radius: 12px; display: flex; flex-direction: column;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            position: relative; transition: transform 0.3s ease;
+        }
+
+        /* Shake Animation for Danger */
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* --- Header / Traffic Lights --- */
+        .title-bar {
+            padding: 15px; display: flex; align-items: center;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .dots { display: flex; gap: 8px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .red { background: var(--mac-red); }
+        .yellow { background: var(--mac-yellow); }
+        .green { background: var(--mac-green); }
+        .title { flex-grow: 1; text-align: center; font-size: 13px; font-weight: 600; color: #666; }
+
+        /* --- Layout --- */
+        .content { display: flex; flex-grow: 1; overflow: hidden; }
+
+        /* Sidebar: Controls */
+        .sidebar {
+            width: 320px; padding: 30px;
+            border-right: 1px solid rgba(0,0,0,0.05);
+            display: flex; flex-direction: column; gap: 20px;
+        }
+
+        .stat-card {
+            background: rgba(0,0,0,0.03); padding: 15px; border-radius: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .stat-val { font-weight: 700; color: var(--accent); transition: color 0.5s; }
+
+        /* Input & Button */
+        input {
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd;
+            background: #fff; outline: none; box-sizing: border-box;
+        }
+        .mac-btn {
+            background: linear-gradient(180deg, var(--accent) 0%, #0058D1 100%);
+            color: white; border: none; padding: 12px; border-radius: 8px;
+            font-weight: 600; cursor: pointer; transition: 0.3s;
+        }
+        .mac-btn:active { transform: scale(0.96); }
+
+        /* --- Main Feed --- */
+        .feed { flex-grow: 1; padding: 30px; overflow-y: auto; background: rgba(255,255,255,0.1); }
+        .log-item {
+            background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex; align-items: center; gap: 15px;
+            animation: slideIn 0.4s ease-out;
+        }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } }
+
+        .indicator { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+        .pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0px rgba(0,122,255,0.4); } 100% { box-shadow: 0 0 0 10px rgba(0,122,255,0); } }
+
+    </style>
+</head>
+<body>
+
+    <div class="window" id="win">
+        <div class="title-bar">
+            <div class="dots">
+                <div class="dot red"></div>
+                <div class="dot yellow"></div>
+                <div class="dot green"></div>
+            </div>
+            <div class="title">KHANSAR SHIELD v2.0 // PROTECTED</div>
+        </div>
+
+        <div class="content">
+            <div class="sidebar">
+                <div class="stat-card">
+                    <span>Scans Today</span>
+                    <span class="stat-val" id="count">0</span>
+                </div>
+                <div class="stat-card">
+                    <span>Threats Blocked</span>
+                    <span class="stat-val" id="threats">0</span>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <input type="text" id="urlInput" placeholder="Analyze URL...">
+                    <button class="mac-btn" style="width:100%; margin-top:10px;" onclick="analyze()">Perform Deep Scan</button>
+                </div>
+
+                <div style="margin-top: auto; font-size: 11px; color: #888;">
+                    <p>● Machine Learning Core: v4.2.1</p>
+                    <p>● Status: Monitoring Live Traffic</p>
+                </div>
+            </div>
+
+            <div class="feed" id="feed">
+                <div style="text-align: center; color: #aaa; margin-top: 100px;">
+                    <p>Awaiting Intelligence Stream...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scanCount = 0;
+        let threatCount = 0;
+
+        async function analyze() {
+            const urlInput = document.getElementById('urlInput');
+            const url = urlInput.value;
+            const win = document.getElementById('win');
+            if(!url) return;
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+                const data = await response.json();
+                
+                scanCount++;
+                document.getElementById('count').innerText = scanCount;
+
+                const feed = document.getElementById('feed');
+                if (scanCount === 1) feed.innerHTML = ''; // Clear initial message
+
+                const log = document.createElement('div');
+                log.className = 'log-item';
+                
+                if (data.status === 'phishing') {
+                    threatCount++;
+                    document.getElementById('threats').innerText = threatCount;
+                    document.documentElement.style.setProperty('--accent', 'var(--mac-red)');
+                    win.classList.add('shake');
+                    setTimeout(() => win.classList.remove('shake'), 500);
+                    
+                    log.innerHTML = `<div class="indicator" style="background:var(--mac-red)"></div>
+                                     <div style="flex-grow:1"><strong>THREAT:</strong> ${url}</div>
+                                     <div style="font-size:10px; color:#999">${new Date().toLocaleTimeString()}</div>`;
+                } else {
+                    document.documentElement.style.setProperty('--accent', 'var(--mac-green)');
+                    log.innerHTML = `<div class="indicator pulse" style="background:var(--mac-green)"></div>
+                                     <div style="flex-grow:1"><strong>SECURE:</strong> ${url}</div>
+                                     <div style="font-size:10px; color:#999">${new Date().toLocaleTimeString()}</div>`;
+                }
+
+                feed.prepend(log);
+                urlInput.value = '';
+
+            } catch (e) {
+                alert("Security Core Offline. Check Backend.");
+            }
+        }
+    </script>
+</body>
+</html>
