@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KS | Security Operations Center</title>
+    <style>
+        :root {
+            /* Light Theme (Default) */
+            --bg-start: #f5f7fa;
+            --bg-end: #c3cfe2;
+            --panel-bg: rgba(255, 255, 255, 0.7);
+            --text-main: #1d1d1f;
+            --text-sub: #86868b;
+            --border-ui: rgba(0, 0, 0, 0.08);
+            
+            /* Status Colors */
+            --accent: #007AFF;
+            --safe: #34C759;
+            --danger: #FF3B30;
+            --current-theme: var(--accent);
+        }
+
+        [data-theme="dark"] {
+            --bg-start: #0a0a0c;
+            --bg-end: #1c1c1e;
+            --panel-bg: rgba(28, 28, 30, 0.8);
+            --text-main: #f5f5f7;
+            --text-sub: #a1a1a6;
+            --border-ui: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            font-family: 'Inter', -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: var(--text-main);
+            transition: all 0.5s ease;
+        }
+
+        /* --- macOS Window Frame --- */
+        .window {
+            width: 950px;
+            height: 600px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid var(--border-ui);
+            border-radius: 18px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .title-bar {
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border-ui);
+        }
+
+        .dots { display: flex; gap: 8px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .dot-r { background: #FF5F56; }
+        .dot-y { background: #FFBD2E; }
+        .dot-g { background: #27C93F; }
+
+        .theme-toggle {
+            margin-left: auto;
+            cursor: pointer;
+            font-size: 14px;
+            opacity: 0.7;
+            transition: all 0.3s;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .theme-toggle:hover {
+            opacity: 1;
+            background: var(--border-ui);
+        }
+
+        /* --- Layout Content --- */
+        .main { display: flex; flex-grow: 1; overflow: hidden; }
+
+        .sidebar {
+            width: 340px;
+            padding: 40px;
+            border-right: 1px solid var(--border-ui);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo { font-weight: 800; font-size: 11px; letter-spacing: 3px; color: var(--current-theme); margin-bottom: 50px; transition: color 0.4s; }
+
+        .input-wrapper {
+            position: relative;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+        }
+
+        input {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--border-ui);
+            padding: 12px 0;
+            padding-right: 32px;
+            font-size: 16px;
+            color: var(--text-main);
+            outline: none;
+            flex: 1;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-weight: 500;
+        }
+
+        input::placeholder {
+            color: var(--text-sub);
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+
+        input:focus {
+            border-bottom-color: var(--current-theme);
+            border-bottom-width: 2.5px;
+        }
+
+        input:focus::placeholder {
+            opacity: 0.8;
+            color: var(--current-theme);
+        }
+
+        input.valid {
+            border-bottom-color: var(--current-theme);
+        }
+
+        input.invalid {
+            border-bottom-color: var(--current-theme);
+        }
+
+        /* Clear Button */
+        .input-clear {
+            position: absolute;
+            right: 0;
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.3s;
+            padding: 4px 8px;
+            color: var(--text-sub);
+        }
+
+        .input-clear:hover {
+            opacity: 1;
+            color: var(--current-theme);
+            transform: scale(1.2);
+        }
+
+        .input-wrapper input:not(:placeholder-shown) ~ .input-clear,
+        input:focus ~ .input-clear {
+            opacity: 0.6;
+        }
+
+        /* Input Status Indicator */
+        .input-status {
+            position: absolute;
+            bottom: -20px;
+            left: 0;
+            font-size: 11px;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s;
+            letter-spacing: 0.5px;
+            display: none;
+        }
+
+        .input-wrapper {
+            margin-bottom: 50px;
+        }
+
+        /* Real macOS Button Styling */
+        .mac-btn {
+            background: var(--current-theme);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: -0.3px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 13px;
+        }
+
+        .mac-btn:hover:not(:disabled) {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+            transform: translateY(-3px);
+            background: var(--current-theme);
+            filter: brightness(1.1);
+        }
+
+        .mac-btn:active:not(:disabled) {
+            transform: translateY(-1px) scale(0.98);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+        }
+
+        .mac-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .mac-btn.loading {
+            pointer-events: none;
+        }
+
+        .mac-btn.success {
+            background: var(--safe);
+            animation: pulse-success 0.6s ease-out;
+        }
+
+        .mac-btn.error {
+            background: var(--danger);
+            animation: pulse-error 0.6s ease-out;
+        }
+
+        @keyframes pulse-success {
+            0%, 100% { box-shadow: 0 4px 12px rgba(52,199,89,0.4); }
+            50% { box-shadow: 0 4px 20px rgba(52,199,89,0.6); }
+        }
+
+        @keyframes pulse-error {
+            0%, 100% { box-shadow: 0 4px 12px rgba(255,59,48,0.4); }
+            50% { box-shadow: 0 4px 20px rgba(255,59,48,0.6); }
+        }
+
+        /* Meter Area Styling */
+        .meter-area {
+            margin-top: auto;
+            padding: 20px 0;
+            border-top: 1px solid var(--border-ui);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .meter-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-sub);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        .meter-label#statusText {
+            color: var(--current-theme);
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+        }
+
+        .track {
+            background: var(--border-ui);
+            height: 6px;
+            width: 100%;
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--current-theme) 0%, var(--current-theme) 100%);
+            border-radius: 3px;
+            transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1), background 0.4s;
+            opacity: 0.95;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        /* Percentage Display */
+        .meter-label#percentText {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--current-theme);
+            text-align: center;
+            padding: 12px;
+            background: rgba(0,0,0,0.02);
+            border-radius: 8px;
+            letter-spacing: -0.5px;
+            transition: all 0.3s;
+        }
+
+        [data-theme="dark"] .meter-label#percentText {
+            background: rgba(255,255,255,0.05);
+        }
+
+        @keyframes slideIn { 
+            from { 
+                opacity: 0; 
+                transform: translateY(15px); 
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .indicator { 
+            width: 8px; 
+            height: 8px; 
+            border-radius: 50%; 
+            background: var(--current-theme);
+            flex-shrink: 0;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* --- Narrative Feed --- */
+        .feed { flex-grow: 1; padding: 40px; overflow-y: auto; background: rgba(0,0,0,0.02); }
+        .log-entry {
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border-ui);
+            animation: slideIn 0.4s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        .log-entry:hover {
+            border-color: var(--current-theme);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
+        }
+        
+        .indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--current-theme); }
+        .log-text { font-size: 13px; line-height: 1.4; }
+        .log-url { font-family: monospace; font-size: 11px; color: var(--text-sub); margin-top: 4px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* Badges */
+        .badge { font-size: 9px; font-weight: 800; padding: 3px 6px; border-radius: 4px; text-transform: uppercase; margin-left: auto; }
+        .badge-safe { background: #E3FCEF; color: #006644; }
+        .badge-danger { background: #FFEBE6; color: #BF2600; }
+
+        /* Shake Animation for Threat Detection */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            10% { transform: translateX(-8px) rotate(-0.5deg); }
+            20% { transform: translateX(8px) rotate(0.5deg); }
+            30% { transform: translateX(-8px) rotate(-0.5deg); }
+            40% { transform: translateX(8px) rotate(0.5deg); }
+            50% { transform: translateX(-8px) rotate(-0.5deg); }
+            60% { transform: translateX(8px) rotate(0.5deg); }
+            70% { transform: translateX(-8px) rotate(-0.5deg); }
+            80% { transform: translateX(8px) rotate(0.5deg); }
+            90% { transform: translateX(-4px) rotate(-0.3deg); }
+        }
+
+        .window.threat-detected {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        /* Pulse effect for danger state */
+        @keyframes dangerPulse {
+            0%, 100% { box-shadow: 0 40px 100px rgba(0,0,0,0.15); }
+            50% { box-shadow: 0 40px 100px rgba(255, 59, 48, 0.3); }
+        }
+
+        .window.danger-mode {
+            animation: dangerPulse 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body data-theme="light">
+
+    <div class="window">
+        <div class="title-bar">
+            <div class="dots">
+                <div class="dot dot-r"></div>
+                <div class="dot dot-y"></div>
+                <div class="dot dot-g"></div>
+            </div>
+            <div class="theme-toggle" id="themeToggle">🌙 DARK MODE</div>
+        </div>
+
+        <div class="main">
+            <div class="sidebar">
+                <div class="logo">KHANSAR // SHIELD</div>
+                
+                <div class="input-wrapper">
+                    <input type="text" id="urlInput" placeholder="Analyze endpoint URL..." autocomplete="off">
+                    <button class="input-clear" id="clearBtn" title="Clear input">✕</button>
+                    <span class="input-status" id="inputStatus"></span>
+                </div>
+                <button class="mac-btn" id="scanBtn">
+                    <span class="btn-text">Initiate System Scan</span>
+                </button>
+
+                <div class="meter-area">
+                    <div class="meter-label" id="statusText">SYSTEM READY</div>
+                    <div class="track"><div id="pBar" class="bar"></div></div>
+                    <div class="meter-label" id="percentText">0% CONFIDENCE</div>
+                </div>
+            </div>
+
+            <div class="feed" id="logFeed">
+                <div class="log-entry">
+                    <div class="indicator" style="background: var(--accent);"></div>
+                    <div class="log-text">
+                        <strong>System Initialized.</strong> Intelligence core v2.6.0 is active and monitoring traffic.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 0. Input Validation ---
+        const urlInput = document.getElementById('urlInput');
+        const clearBtn = document.getElementById('clearBtn');
+        const inputStatus = document.getElementById('inputStatus');
+        const scanBtn = document.getElementById('scanBtn');
+
+        // URL Validation Function (optional)
+        function isValidInput(string) {
+            return string && string.trim().length > 0;
+        }
+
+        // Update input status
+        urlInput.addEventListener('input', () => {
+            const value = urlInput.value.trim();
+            
+            // Reset button state
+            scanBtn.classList.remove('success', 'error', 'loading');
+            const btnText = document.querySelector('.btn-text');
+            btnText.textContent = 'Initiate System Scan';
+            
+            if (value === '') {
+                urlInput.classList.remove('valid', 'invalid');
+                inputStatus.textContent = '';
+                scanBtn.disabled = true;
+            } else {
+                urlInput.classList.add('valid');
+                scanBtn.disabled = false;
+            }
+        });
+
+        // Clear button functionality
+        clearBtn.addEventListener('click', () => {
+            urlInput.value = '';
+            urlInput.classList.remove('valid', 'invalid');
+            inputStatus.textContent = '';
+            urlInput.focus();
+            scanBtn.disabled = true;
+            scanBtn.classList.remove('success', 'error', 'loading');
+            const btnText = document.querySelector('.btn-text');
+            btnText.textContent = 'Initiate System Scan';
+        });
+
+        // Enter key to scan
+        urlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && urlInput.classList.contains('valid')) {
+                scanBtn.click();
+            }
+        });
+
+        // --- 1. Theme Logic ---
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', () => {
+            const current = document.body.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', next);
+            themeToggle.innerText = next === 'light' ? '🌙 DARK MODE' : '☀️ LIGHT MODE';
+        });
+
+        // --- 2. Narrative Log Logic ---
+        const secureSentences = [
+            "Analyzed URL structure. No malicious patterns identified.",
+            "Cryptographic check complete. Endpoint appears legitimate.",
+            "Clean signature detected. Site verified as safe by neural core."
+        ];
+
+        const dangerSentences = [
+            "CRITICAL: Deceptive URL heuristics flagged.",
+            "Anomalous pattern identified. Potential credential harvesting detected.",
+            "Phishing signature matched against active threat database."
+        ];
+
+        function addLog(url, status) {
+            const feed = document.getElementById('logFeed');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            const sentences = status === 'phishing' ? dangerSentences : secureSentences;
+            const text = sentences[Math.floor(Math.random() * sentences.length)];
+            const badge = status === 'phishing' ? 'badge-danger' : 'badge-safe';
+            const color = status === 'phishing' ? 'var(--danger)' : 'var(--safe)';
+
+            entry.innerHTML = `
+                <div class="indicator" style="background: ${color};"></div>
+                <div class="log-text">
+                    <strong>${status.toUpperCase()}:</strong> ${text}
+                    <span class="log-url">${url}</span>
+                </div>
+                <div class="badge ${badge}">${status}</div>
+            `;
+            feed.prepend(entry);
+        }
+
+        // --- 3. Scan Execution ---
+        let isScanning = false;
+        
+        document.getElementById('scanBtn').addEventListener('click', async () => {
+            const url = urlInput.value;
+            if(!url || isScanning) return;
+
+            const windowElement = document.querySelector('.window');
+            const btnText = document.querySelector('.btn-text');
+            
+            // Start scanning
+            isScanning = true;
+            scanBtn.disabled = true;
+            scanBtn.classList.add('loading');
+            btnText.innerHTML = '<div class="spinner"></div><span>Analyzing...</span>';
+
+            // Reset UI for scanning
+            document.documentElement.style.setProperty('--current-theme', 'var(--accent)');
+            windowElement.classList.remove('threat-detected', 'danger-mode');
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8000/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+                const data = await response.json();
+
+                // Update Theme and Meter
+                const isPhish = data.status === 'phishing';
+                document.documentElement.style.setProperty('--current-theme', isPhish ? 'var(--danger)' : 'var(--safe)');
+                
+                document.getElementById('pBar').style.width = isPhish ? '12%' : '98%';
+                document.getElementById('statusText').innerText = isPhish ? 'THREAT DETECTED' : 'SYSTEM SECURE';
+                document.getElementById('percentText').innerText = isPhish ? '12.4% TRUST' : '98.9% TRUST';
+
+                // Trigger shake animation and danger mode for phishing
+                if (isPhish) {
+                    windowElement.classList.add('threat-detected');
+                    setTimeout(() => {
+                        windowElement.classList.add('danger-mode');
+                    }, 500);
+                }
+
+                // Update button state to show result
+                scanBtn.classList.remove('loading');
+                scanBtn.classList.add(isPhish ? 'error' : 'success');
+                btnText.innerHTML = `<span>${isPhish ? '⚠️ Threat Detected' : '✓ Site Secure'}</span>`;
+                
+                addLog(url, data.status);
+                
+                // Reset after delay
+                setTimeout(() => {
+                    urlInput.value = '';
+                    urlInput.classList.remove('valid', 'invalid');
+                    inputStatus.textContent = '';
+                    scanBtn.disabled = true;
+                    scanBtn.classList.remove('success', 'error');
+                    btnText.textContent = 'Initiate System Scan';
+                    isScanning = false;
+                }, 2000);
+
+            } catch (e) {
+                console.error('Error:', e);
+                scanBtn.classList.remove('loading');
+                scanBtn.classList.add('error');
+                btnText.innerHTML = '<span>⚠️ Connection Failed</span>';
+                
+                setTimeout(() => {
+                    scanBtn.classList.remove('error');
+                    btnText.textContent = 'Initiate System Scan';
+                    scanBtn.disabled = true;
+                    isScanning = false;
+                }, 2000);
+            }
+        });
+    </script>
+</body>
+</html>
